@@ -277,33 +277,6 @@ trainer = Seq2SeqTrainer(args=training_args,
                          )
 model.config.use_cache = False
 trainer._load_from_checkpoint = load_from_checkpoint
-# 因为有新的权重，我们需要从开始保存。
-# model.save_pretrained(os.path.join(output_dir, "checkpoint-init"))
-# 开始训练
-# trainer.save_model(output_dir=os.path.join(output_dir, "checkpoint-init"))
-# trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
-# 训练荷兰语总是因为不知名的原因被终止。我现在要让他有10次接着跑的机会
 resume_from_checkpoint=args.resume_from_checkpoint
-# resume_from_checkpoint_dir=os.path.dirname(resume_from_checkpoint)
 trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
-# if args.device=='cpu':
-#     trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
-# else:
-#     for i in range(10):
-#         try:
-#             # 搜索最新的cp
-#             # 如果输出的模型已经保存了，就把那里当做resume_from_checkpoint
-#             if len(os.listdir(output_dir))>0:
-#                 resume_from_checkpoint=output_dir
-#             resume_from_checkpoints=os.listdir(resume_from_checkpoint)
-#             resume_from_checkpoint = max(resume_from_checkpoints, key=lambda x: int(os.path.basename(x).split('-')[-1]))
-#             resume_from_checkpoint=os.path.join(resume_from_checkpoint_dir,resume_from_checkpoint)
-#             # resume_from_checkpoints_number=[eval(os.path.basename(x).split('-')[-1]) for x in resume_from_checkpoints]
-#             trainer.train(resume_from_checkpoint=resume_from_checkpoint)
-#         except Exception as e:
-#             print(e)
 trainer.save_model(os.path.join(output_dir, "checkpoint-final"))
-# 保存最后的模型
-# trainer.save_state()
-# if training_args.local_rank == 0 or training_args.local_rank == -1:
-#     model.save_pretrained(os.path.join(output_dir, "checkpoint-final"))
