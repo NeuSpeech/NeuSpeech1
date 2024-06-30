@@ -141,7 +141,6 @@ def process_meg(tsv_path):
         meg.info, meg=True,ref_meg=True, eeg=False, stim=False, eog=False, ecg=False
     )
     meg.pick(picks, verbose=False)
-    meg.notch_filter(60, verbose=False)
     meg.filter(l_freq=1, h_freq=58, verbose=False)
     meg.resample(target_meg_sr)
     data = meg.get_data()
