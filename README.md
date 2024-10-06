@@ -169,6 +169,19 @@ python evaluation.py\
 
 ```
 
+following is evaluating speech
+
+lora_model is not needed, but you should select a dir to store results with lora_model arg
+```shell
+python evaluation_speech.py\
+ --base_model='openai/whisper-base'\
+ --lora_model="output_dir"\
+ --load_lora_model=False\
+ --test_data='/hpc2hdd/home/yyang937/datasets/gwilliams2023/preprocess5/split1/test.jsonl'\
+ --modal='speech' --batch_size=4 --num_workers=1 --language='English'\
+ --timestamps=False --local_files_only=False --noise=False
+```
+
 Thanks for raising issues, please feel free to raise issues if you encounter any problem.
 
 Thanks yeyupiaoling for finetuning whisper pipeline https://github.com/yeyupiaoling/Whisper-Finetune

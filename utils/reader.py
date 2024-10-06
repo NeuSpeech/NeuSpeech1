@@ -14,6 +14,7 @@ from utils.utils import preprocess_eeg_data, lowpass_filter, add_gaussian_noise
 import jsonlines
 import re
 import copy
+import soundfile as sf
 
 
 def torch_random_choices(samples, choices):
@@ -50,6 +51,77 @@ def filter_ascii_data_dict(data_dict):
     return data_dict
 
 
+class SpeechDataset(Dataset):
+    def __init__(self,
+                 data_list_path,
+                 processor,
+                 data_list_dir='/home/yyang/dataset/multi_media/',
+                 level='sentences',
+                 language=None,
+                 timestamps=False,
+                 min_duration=0.5,
+                 max_duration=30,):
+        """
+        Args:
+            data_list_path: 数据列表文件的路径，或者二进制列表的头文件路径
+            processor: Whisper的预处理工具，WhisperProcessor.from_pretrained获取
+            modal: eeg,speech
+            language: 微调数据的语言
+            timestamps: 微调时是否使用时间戳
+            sample_rate: 音频的采样率，默认是16000
+            min_duration: 小于这个时间段的音频将被截断，单位秒，不能小于0.5，默认0.5s
+            max_duration: 大于这个时间段的音频将被截断，单位秒，不能大于30，默认30s
+            augment_config_path: 数据增强配置参数文件路径
+        """
+        super().__init__()
+        assert min_duration >= 0.5, f"min_duration不能小于0.5，当前为：{min_duration}"
+        assert max_duration <= 30, f"max_duration不能大于30，当前为：{max_duration}"
+        self.data_list_path = data_list_path
+
+        self.processor = processor
+        self.language = language
+        self.timestamps = timestamps
+        self.data_list_dir = data_list_dir
+        self.min_duration = min_duration
+        self.max_duration = max_duration
+        self.vocab = self.processor.tokenizer.get_vocab()
+        self.timestamp_begin = self.vocab['<|notimestamps|>'] + 1
+        self.startoftranscript = self.vocab['<|startoftranscript|>']
+        self.endoftext = self.vocab['<|endoftext|>']
+        self.nocaptions = self.vocab['<|nocaptions|>']
+        self.data_list: List[dict] = []
+        # 加载数据列表
+        self._load_data_list()
+
+    # 加载数据列表
+    def _load_data_list(self):
+        data_list = read_jsonlines(self.data_list_path)  # [:1024] #
+        self.data_list = data_list
+        print(f'num of data:{len(self.data_list)}')
+
+    # 从数据列表里面获取音频数据、采样率和文本
+    def _get_list_data(self, idx):
+        data_list = copy.deepcopy(self.data_list[idx])
+        # 分割音频路径和标签
+        # audio_file = os.path.join(self.data_list_dir, data_list[self.modal]["path"])
+        audio_file = data_list['speech']["path"]
+        transcript = data_list["sentences"] if self.timestamps else data_list["sentence"]
+        language = data_list["language"] if 'language' in data_list.keys() else None
+        sample, sample_rate = sf.read(audio_file, dtype='float32', always_2d=True)  # [len,ch]
+        assert sample_rate == 16000, '输入的音频采样率应该是16kHz'
+
+        sample = sample.T  # eeg:[ch, len]
+        assert sample.shape[1] != 0
+        return sample, sample_rate, transcript, language
+
+    def __getitem__(self, idx):
+        sample, sample_rate, transcript, language = self._get_list_data(idx=idx)
+        self.processor.tokenizer.set_prefix_tokens(language=language if language is not None else self.language)
+        data = self.processor(audio=sample,sampling_rate=sample_rate,text=transcript)
+        return data
+
+    def __len__(self):
+        return len(self.data_list)
 
 
 
